@@ -7,7 +7,7 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 class TerminalRuntimeModule : Module() {
-  private val registry = ShellSessionRegistry()
+  private val shellRegistry = ShellSessionRegistry()
   private val bootstrap by lazy { BootstrapInstaller(appContext.reactContext!!) }
   private val sessionCwds = ConcurrentHashMap<String, String>()
 
@@ -50,24 +50,24 @@ class TerminalRuntimeModule : Module() {
         onExit = { code -> sendEvent("onSessionExit", mapOf("sessionId" to id, "exitCode" to code)) },
         onError = { msg -> sendEvent("onSessionError", mapOf("sessionId" to id, "message" to msg)) },
       )
-      registry.put(session); sessionCwds[id] = cwdFile.absolutePath
+      shellRegistry.put(session); sessionCwds[id] = cwdFile.absolutePath
       mapOf("id" to id, "name" to name, "cwd" to cwdFile.absolutePath, "shell" to (shell ?: "auto"), "bootstrapReady" to (bootstrapRoot != null))
     }
 
     AsyncFunction("sendInput") { input: Map<String, Any?> ->
       val sessionId = input["sessionId"] as? String ?: throw IllegalArgumentException("sessionId required")
       val data = input["data"] as? String ?: ""
-      val session = registry.get(sessionId) ?: return@AsyncFunction mapOf("ok" to false, "error" to "session not found")
+      val session = shellRegistry.get(sessionId) ?: return@AsyncFunction mapOf("ok" to false, "error" to "session not found")
       session.write(data); mapOf("ok" to true)
     }
 
     AsyncFunction("closeSession") { input: Map<String, Any?> ->
       val sessionId = input["sessionId"] as? String ?: throw IllegalArgumentException("sessionId required")
-      registry.remove(sessionId)?.close(); sessionCwds.remove(sessionId); mapOf("ok" to true)
+      shellRegistry.remove(sessionId)?.close(); sessionCwds.remove(sessionId); mapOf("ok" to true)
     }
 
     AsyncFunction("listSessions") {
-      registry.list().map { s -> mapOf("id" to s.id, "name" to s.name, "cwd" to (sessionCwds[s.id] ?: ""), "alive" to s.isAlive()) }
+      shellRegistry.list().map { s -> mapOf("id" to s.id, "name" to s.name, "cwd" to (sessionCwds[s.id] ?: ""), "alive" to s.isAlive()) }
     }
 
     AsyncFunction("installPackage") { input: Map<String, Any?> ->
@@ -79,6 +79,6 @@ class TerminalRuntimeModule : Module() {
       mapOf("exitCode" to code, "stdout" to stdout, "stderr" to stderr)
     }
 
-    OnDestroy { registry.closeAll() }
+    OnDestroy { shellRegistry.closeAll() }
   }
 }
