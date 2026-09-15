@@ -1,0 +1,699 @@
+export type ProviderFamily =
+  | "openai"
+  | "anthropic"
+  | "google"
+  | "on-device"
+  | "openrouter"
+  | "ollama"
+  | "xai"
+  | "openai-compatible";
+
+export type ProviderAuthType = "oauth" | "apiKey" | "none";
+export type DatabaseMode = "local" | "remote";
+export type FileContextSource = "workspace" | "external-folder";
+export type MessageRole = "system" | "user" | "assistant";
+export type MessageStatus = "streaming" | "completed" | "failed";
+export type ModelKind = "chat" | "small";
+export type ModelRef = `${string}/${string}`;
+export type ReasoningEffort =
+  "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
+export type ModelTransport =
+  | "anthropic"
+  | "codexResponses"
+  | "google"
+  | "onDevice"
+  | "openaiChat"
+  | "openaiCompatible"
+  | "openaiResponses";
+export type ToolApprovalMode = "ask" | "auto";
+export type AgentMode = "plan" | "build";
+export type AgentVisibilityMode = "primary" | "subagent" | "all";
+export type AgentToolPermissions = {
+  builtInTools?: Partial<Record<BuiltInToolKey, boolean>>;
+  mcpServers?: Record<string, boolean>;
+};
+export type ThemeMode = "system" | "light" | "dark";
+export type McpServerTransport = "http" | "sse";
+export type McpServerAuthMode = "none" | "headers" | "oauth";
+export type McpServerStatus = "untested" | "connected" | "failed";
+export type AgentRunStatus =
+  | "queued"
+  | "running"
+  | "waiting_for_approval"
+  | "waiting_for_question"
+  | "completed"
+  | "failed"
+  | "canceled"
+  | "resumable"
+  | "retrying";
+export type WorkspaceFileSourceKind = "artifact" | "created" | "imported";
+export type ExternalFolderPlatform = "android" | "ios" | "web";
+export type BuiltInToolKey =
+  | "workspaceListFiles"
+  | "workspaceRead"
+  | "workspaceWrite"
+  | "workspaceCreateFile"
+  | "workspaceGrep"
+  | "workspaceGlob"
+  | "workspaceEdit"
+  | "downloadFile"
+  | "folderListDirectory"
+  | "folderRead"
+  | "folderWrite"
+  | "folderCreateFile"
+  | "folderCreateDirectory"
+  | "folderRenameEntry"
+  | "folderMoveEntry"
+  | "folderDeleteEntry"
+  | "folderGrep"
+  | "folderGlob"
+  | "folderEdit"
+  | "todos"
+  | "question"
+  | "skill"
+  | "schedules"
+  | "terminalExec"
+  | "terminalInstall"
+  | "terminalSessionCreate"
+  | "terminalSessionSend"
+  | "terminalSessionRead"
+  | "terminalSessionClose";
+
+// ============================================================
+// NEW: Nested Projects
+// ============================================================
+export type Project = {
+  id: string;
+  parentId: string | null;
+  name: string;
+  description: string | null;
+  folderUri: string | null;
+  folderDisplayName: string | null;
+  inheritFromParent: boolean;
+  providerId: string | null;
+  modelId: string | null;
+  agentId: string | null;
+  reasoningEffort: ReasoningEffort;
+  autoApprove: boolean;
+  color: string | null;
+  icon: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null;
+};
+
+export type ProjectTreeNode = Project & { children: ProjectTreeNode[]; depth: number; };
+export type ProjectResolvedConfig = {
+  providerId: string | null;
+  modelId: string | null;
+  agentId: string | null;
+  reasoningEffort: ReasoningEffort;
+  autoApprove: boolean;
+  externalFolderSession: ExternalFolderSession | null;
+  source: "project" | "parent" | "default";
+};
+
+// ============================================================
+// NEW: Terminal sessions
+// ============================================================
+export type TerminalSessionStatus = "idle" | "running" | "waiting_input" | "closed" | "crashed";
+export type TerminalStreamKind = "stdout" | "stderr" | "stdin";
+export type TerminalSession = {
+  id: string;
+  name: string;
+  projectId: string | null;
+  cwd: string;
+  shell: string;
+  status: TerminalSessionStatus;
+  lastCommand: string | null;
+  exitCode: number | null;
+  bootstrapReady: boolean;
+  createdAt: string;
+  updatedAt: string;
+  closedAt: string | null;
+};
+export type TerminalSessionOutputEntry = {
+  id: string;
+  sessionId: string;
+  sequence: number;
+  stream: TerminalStreamKind;
+  data: string;
+  createdAt: string;
+};
+
+// ============================================================
+// NEW: Multi-Agent Parallel Runs
+// ============================================================
+export type ParallelRunStatus = "planning" | "dispatching" | "running" | "merging" | "completed" | "failed" | "canceled";
+export type ParallelRunWorkerStatus = "pending" | "running" | "completed" | "failed" | "skipped";
+export type ParallelRunPlanItem = {
+  id: string;
+  title: string;
+  description: string;
+  workerAgentId: string;
+  workerAgentName: string;
+};
+export type ParallelRun = {
+  id: string;
+  parentConversationId: string;
+  parentMessageId: string;
+  orchestratorAgentId: string | null;
+  title: string;
+  task: string;
+  status: ParallelRunStatus;
+  plan: ParallelRunPlanItem[];
+  summary: string | null;
+  projectId: string | null;
+  startedAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+  lastError: string | null;
+};
+export type ParallelRunWorker = {
+  id: string;
+  parallelRunId: string;
+  planItemId: string;
+  workerAgentId: string;
+  workerAgentName: string;
+  subtask: string;
+  conversationId: string | null;
+  agentRunId: string | null;
+  status: ParallelRunWorkerStatus;
+  result: string | null;
+  errorMessage: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type BuiltInToolSettings = Record<BuiltInToolKey, boolean>;
+export type SkillFile = {
+  id: string;
+  path: string;
+  content: string;
+  mimeType: string | null;
+  size: number | null;
+  createdAt: string;
+  updatedAt: string;
+};
+export type SkillConfig = {
+  id: string;
+  title: string;
+  description: string | null;
+  instructions: string;
+  sourceMarkdown: string | null;
+  enabled: boolean;
+  autoMatch: boolean;
+  matchKeywords: string[];
+  recommendedMcpServerIds: string[];
+  recommendedBuiltInToolKeys: BuiltInToolKey[];
+  skillFiles: SkillFile[];
+  createdAt: string;
+  updatedAt: string;
+};
+export type AgentDoc = {
+  id: string;
+  name: string;
+  content: string;
+  mimeType: string | null;
+  size: number | null;
+  createdAt: string;
+  updatedAt: string;
+};
+export type AgentConfig = {
+  id: string;
+  name: string;
+  description: string | null;
+  prompt: string | null;
+  mode: AgentVisibilityMode;
+  modelProviderId: string | null;
+  modelModelId: string | null;
+  temperature: number | null;
+  enabled: boolean;
+  hidden: boolean;
+  sourceMarkdown: string | null;
+  toolPermissions: AgentToolPermissions;
+  docs: AgentDoc[];
+  createdAt: string;
+  updatedAt: string;
+};
+export type SavedPrompt = {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+};
+export type MemoryEntry = {
+  id: string;
+  content: string;
+  enabled: boolean;
+  sourceConversationId: string | null;
+  sourceMessageId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null;
+};
+export type MemoryEvent = {
+  id: string;
+  kind: "created" | "updated" | "deleted";
+  memoryId: string;
+  content: string;
+  previousContent: string | null;
+  reason: string | null;
+  createdAt: string;
+};
+export type PendingToolApprovalRequest = {
+  id: string;
+  inputSummary: string;
+  toolName: string;
+};
+export type PendingToolApproval = PendingToolApprovalRequest & {
+  chatTitle: string;
+  conversationId: string;
+  runId: string;
+};
+export type QuestionnaireItem = {
+  id: string;
+  prompt: string;
+  description?: string | null;
+  required?: boolean;
+  multiple?: boolean;
+  choices?: string[];
+  allowFreeform?: boolean;
+  freeformPlaceholder?: string | null;
+};
+export type PendingQuestionnaireRequest = {
+  id: string;
+  items: QuestionnaireItem[];
+};
+export type PendingQuestionnaireAnswer = {
+  id: string;
+  value: string | string[] | null;
+};
+export type PendingQuestionnaire = PendingQuestionnaireRequest & {
+  chatTitle: string;
+  conversationId: string;
+  runId: string;
+};
+export type ModelUsageSnapshot = {
+  providerId: string;
+  providerLabel: string;
+  modelId: string;
+  modelLabel: string;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  totalTokens: number | null;
+  costInput: number | null;
+  costOutput: number | null;
+  costTotal: number | null;
+  contextWindow: number | null;
+  remainingContext: number | null;
+  contextUsagePercent: number | null;
+};
+
+export type ModelCapabilities = {
+  imageGeneration: boolean;
+  imageInput: boolean;
+  reasoning: boolean;
+  tools: boolean;
+};
+
+export type GeneratedImageAttachment = {
+  id: string;
+  mimeType: string;
+  uri: string;
+};
+
+export type ToolExecutionRecord = {
+  id?: string;
+  toolName: string;
+  status: "running" | "completed" | "failed";
+  inputSummary: string;
+  outputSummary: string | null;
+  error: string | null;
+  createdAt: string;
+  /** Captured Termux command details for the read-only command output UI. */
+  termux?: {
+    command: string;
+    output: string | null;
+    taskId: string | null;
+  };
+};
+
+export type PromptArtifact = {
+  id: string;
+  category: "model" | "tool";
+  fileId: string;
+  displayName: string;
+  relativePath: string;
+  createdAt: string;
+};
+
+export type ExecutionTimelineEvent = {
+  id: string;
+  kind: "run" | "prompt" | "tool" | "image";
+  status: "pending" | "completed" | "failed" | "info";
+  title: string;
+  detail: string | null;
+  createdAt: string;
+};
+
+export type ReasoningBlock = {
+  id: string;
+  text: string;
+  startedAt: string;
+  completedAt: string | null;
+};
+
+export type TodoStatus = "pending" | "in_progress" | "completed";
+
+export type TodoListItem = {
+  id: string;
+  title: string;
+  status: TodoStatus;
+  createdAt: string;
+  completedAt: string | null;
+};
+
+export type NotificationSettings = {
+  approvalRequests: boolean;
+  runFinished: boolean;
+};
+
+export type ScheduleFrequency =
+  | "hourly"
+  | "daily"
+  | "weekly"
+  | "monthly"
+  | "custom";
+
+export type Schedule = {
+  id: string;
+  title: string;
+  prompt: string;
+  expression: string;
+  timezone: string;
+  providerId: string;
+  modelId: string;
+  agentId: string | null;
+  autoApprove: boolean;
+  enabled: boolean;
+  conversationId: string | null;
+  externalFolderSession: ExternalFolderSession | null;
+  lastRunAt: string | null;
+  nextRunAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ScheduleRunStatus =
+  | "queued"
+  | "running"
+  | "completed"
+  | "failed"
+  | "skipped";
+
+export type ScheduleRun = {
+  id: string;
+  scheduleId: string;
+  runId: string | null;
+  status: ScheduleRunStatus;
+  error: string | null;
+  startedAt: string;
+  completedAt: string | null;
+};
+
+export type MessageMetadata = {
+  agentName?: string | null;
+  appliedSkillIds?: string[];
+  executionTimeline?: ExecutionTimelineEvent[];
+  externalFolderDisplayName?: string | null;
+  fileContextSource?: FileContextSource;
+  generatedImages?: GeneratedImageAttachment[];
+  memoryEvents?: MemoryEvent[];
+  promptArtifacts?: PromptArtifact[];
+  reasoning?: ReasoningBlock[];
+  runId?: string | null;
+  selectedFileIds?: string[];
+  termuxRunAnchors?: TermuxRunAnchor[];
+  todoList?: TodoListItem[];
+  toolExecutions?: ToolExecutionRecord[];
+  usage?: ModelUsageSnapshot | null;
+};
+
+export type TermuxRunAnchor = {
+  executionId: string;
+  textOffset: number;
+};
+
+export type AgentRun = {
+  id: string;
+  conversationId: string;
+  status: AgentRunStatus;
+  userMessageId: string;
+  assistantMessageId: string;
+  providerId: string;
+  modelId: string;
+  input: string;
+  fileContextSource: FileContextSource | null;
+  selectedFileIds: string[];
+  externalFolderSession: ExternalFolderSession | null;
+  startedAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+  lastError: string | null;
+  resumeCount: number;
+  retryCount: number;
+  maxRetries: number;
+  lastRetryAt: string | null;
+  agentId: string | null;
+  agentMode: AgentMode;
+  autoApprove: boolean;
+};
+
+export type ExternalFolderSession = {
+  uri: string;
+  displayName: string;
+  platform: ExternalFolderPlatform;
+  sourceType: "external-folder";
+  grantedAt: string;
+};
+
+export type ProviderConfig = {
+  id: string;
+  family: ProviderFamily;
+  label: string;
+  authType: ProviderAuthType;
+  baseUrl: string | null;
+  enabled: boolean;
+  oauthAccountEmail: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type McpServerConfig = {
+  id: string;
+  label: string;
+  url: string;
+  transport: McpServerTransport;
+  authMode: McpServerAuthMode;
+  enabled: boolean;
+  headerNames: string[];
+  oauthClientId: string | null;
+  oauthAuthorizationUrl: string | null;
+  oauthTokenUrl: string | null;
+  oauthScopes: string | null;
+  oauthAllowedAuthOrigin: string | null;
+  lastStatus: McpServerStatus;
+  lastError: string | null;
+  toolCount: number | null;
+  serverInfo: Record<string, unknown> | null;
+  serverInstructions: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ModelPreset = {
+  id: string;
+  providerId: string;
+  modelId: string;
+  label: string | null;
+  isDefault: boolean;
+  options: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ProviderAccount = {
+  id: string;
+  providerId: string;
+  label: string;
+  credentialKind: "apiKey" | "oauth";
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Conversation = {
+  id: string;
+  title: string;
+  providerId: string | null;
+  modelId: string | null;
+  reasoningEffort: ReasoningEffort;
+  agentId: string | null;
+  agentMode: AgentMode;
+  projectId: string | null;
+  selectedFileIds: string[];
+  selectedMcpServerIds: string[] | null;
+  selectedSkillIds: string[];
+  externalFolderSession: ExternalFolderSession | null;
+  pinnedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null;
+};
+
+export type StoredMessage = {
+  id: string;
+  conversationId: string;
+  role: MessageRole;
+  content: string;
+  metadata: MessageMetadata | null;
+  status: MessageStatus;
+  error: string | null;
+  sequence: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type WorkspaceFile = {
+  id: string;
+  displayName: string;
+  originalName: string | null;
+  mimeType: string | null;
+  size: number | null;
+  relativePath: string;
+  sourceKind: WorkspaceFileSourceKind;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SendMessageInput = {
+  content: string;
+  fileContextSource?: FileContextSource;
+  selectedFileIds?: string[];
+};
+
+export type AppSettings = {
+  activeConversationId: string | null;
+  activeModelRef: ModelRef | null;
+  builtInToolSettings: BuiltInToolSettings;
+  databaseMode: DatabaseMode;
+  databaseUrl: string | null;
+  memoryEnabled: boolean;
+  schedulingEnabled: boolean;
+  themeMode: ThemeMode;
+  toolApprovalMode: ToolApprovalMode;
+  notificationSettings: NotificationSettings;
+};
+
+export type CuratedModelDefinition = {
+  capabilities?: Partial<ModelCapabilities>;
+  contextWindow?: number | null;
+  id: string;
+  isFree?: boolean;
+  kind: ModelKind;
+  label: string;
+  outputType?: "image" | "text";
+  options?: Record<string, unknown>;
+  transport?: ModelTransport;
+};
+
+export type ResolvedModel = {
+  capabilities: ModelCapabilities;
+  ref: ModelRef;
+  providerId: string;
+  providerFamily: ProviderFamily;
+  providerAuthType: ProviderAuthType;
+  providerLabel: string;
+  modelId: string;
+  label: string;
+  outputType: "image" | "text";
+  isDefault: boolean;
+  isFree: boolean;
+  source: "suggested" | "custom";
+  active: boolean;
+  supportsTools: boolean;
+  supportsImageInput: boolean;
+  supportsImageGeneration: boolean;
+  supportsReasoning: boolean;
+  transport: ModelTransport;
+  options: Record<string, unknown> | null;
+  contextWindow: number | null;
+};
+
+export type ResolvedConfig = {
+  activeProviderIds: string[];
+  providers: ProviderConfig[];
+  modelPresets: ModelPreset[];
+  suggestedModelsByProvider: Record<string, CuratedModelDefinition[]>;
+  providerModelDiscovery: Record<
+    string,
+    { error: string | null; status: "connected" | "failed" }
+  >;
+  availableModels: ResolvedModel[];
+  activeModels: ResolvedModel[];
+  currentModel: ResolvedModel | null;
+  currentModelSupportsImageGeneration: boolean;
+  currentModelSupportsImageInput: boolean;
+  currentModelSupportsTools: boolean;
+  databaseMode: DatabaseMode;
+  databaseUrl: string | null;
+};
+
+export type AppStateSnapshot = {
+  activeProviderAccountIds: Record<string, string | null>;
+  agentRuns: AgentRun[];
+  agents: AgentConfig[];
+  conversations: Conversation[];
+  conversationApprovalModes?: Record<string, ToolApprovalMode>;
+  currentConversation: Conversation | null;
+  currentSelectedAgentId: string | null;
+  currentSelectedFileIds: string[];
+  currentSelectedMcpServerIds: string[] | null;
+  currentSelectedSkillIds: string[];
+  memory: MemoryEntry | null;
+  mcpServers: McpServerConfig[];
+  messages: StoredMessage[];
+  providerAccounts: ProviderAccount[];
+  savedPrompts: SavedPrompt[];
+  schedules: Schedule[];
+  skills: SkillConfig[];
+  workspaceFiles: WorkspaceFile[];
+  projects?: Project[];
+  activeProjectId?: string | null;
+  parallelRuns?: ParallelRun[];
+  parallelRunWorkers?: ParallelRunWorker[];
+  terminalSessions?: TerminalSession[];
+  resolvedConfig: ResolvedConfig;
+  settings: AppSettings;
+};
+
+export function createModelRef(providerId: string, modelId: string): ModelRef {
+  return `${providerId}/${modelId}`;
+}
+
+export function parseModelRef(modelRef: ModelRef) {
+  const separatorIndex = modelRef.indexOf("/");
+
+  if (separatorIndex <= 0 || separatorIndex === modelRef.length - 1) {
+    throw new Error(`Invalid model ref: ${modelRef}`);
+  }
+
+  return {
+    providerId: modelRef.slice(0, separatorIndex),
+    modelId: modelRef.slice(separatorIndex + 1),
+  };
+}

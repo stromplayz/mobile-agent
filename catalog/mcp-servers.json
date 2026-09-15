@@ -1,0 +1,357 @@
+{
+  "version": 1,
+  "servers": [
+    {
+      "id": "notion",
+      "label": "Notion",
+      "description": "Search, read, and update pages in your Notion workspace.",
+      "url": "https://mcp.notion.com/mcp",
+      "transport": "http",
+      "authMode": "oauth"
+    },
+    {
+      "id": "linear",
+      "label": "Linear",
+      "description": "Find, create, and update Linear issues and projects.",
+      "url": "https://mcp.linear.app/mcp",
+      "transport": "http",
+      "authMode": "oauth"
+    },
+    {
+      "id": "atlassian",
+      "label": "Atlassian",
+      "description": "Search and manage Jira issues, Confluence pages, and Compass resources.",
+      "url": "https://mcp.atlassian.com/v1/mcp/authv2",
+      "transport": "http",
+      "authMode": "oauth"
+    },
+    {
+      "id": "github",
+      "label": "GitHub",
+      "description": "Work with repositories, issues, pull requests, and actions.",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "transport": "http",
+      "authMode": "headers",
+      "headerTemplate": "Authorization: Bearer <your GitHub PAT>"
+    },
+    {
+      "id": "sentry",
+      "label": "Sentry",
+      "description": "Investigate errors, issues, traces, and project health in Sentry.",
+      "url": "https://mcp.sentry.dev/mcp",
+      "transport": "http",
+      "authMode": "oauth"
+    },
+    {
+      "id": "honeycomb",
+      "label": "Honeycomb",
+      "description": "Query telemetry, investigate traces, and manage observability resources.",
+      "url": "https://mcp.honeycomb.io/mcp",
+      "transport": "http",
+      "authMode": "oauth"
+    },
+    {
+      "id": "hugging-face",
+      "label": "Hugging Face",
+      "description": "Search models, datasets, Spaces, papers, and Hugging Face docs.",
+      "url": "https://huggingface.co/mcp",
+      "transport": "http",
+      "authMode": "oauth"
+    },
+    {
+      "id": "cloudflare-docs",
+      "label": "Cloudflare Docs",
+      "description": "Search Cloudflare developer documentation without signing in.",
+      "url": "https://docs.mcp.cloudflare.com/mcp",
+      "transport": "http",
+      "authMode": "none"
+    },
+    {
+      "id": "cloudflare",
+      "label": "Cloudflare",
+      "description": "Manage Cloudflare services across DNS, Workers, R2, Zero Trust, and more.",
+      "url": "https://mcp.cloudflare.com/mcp",
+      "transport": "http",
+      "authMode": "oauth"
+    },
+    {
+      "id": "cloudflare-api-token",
+      "label": "Cloudflare (API Token)",
+      "description": "Automate Cloudflare API operations in CI/CD with explicitly scoped permissions.",
+      "url": "https://mcp.cloudflare.com/mcp",
+      "transport": "http",
+      "authMode": "headers",
+      "headerTemplate": "Authorization: Bearer <your Cloudflare API token>"
+    },
+    {
+      "id": "microsoft-learn",
+      "label": "Microsoft Learn",
+      "description": "Search Microsoft documentation, full articles, and official code samples.",
+      "url": "https://learn.microsoft.com/api/mcp",
+      "transport": "http",
+      "authMode": "none"
+    },
+    {
+      "id": "digitalocean-docs",
+      "label": "DigitalOcean Docs",
+      "description": "Search DigitalOcean product and developer documentation.",
+      "url": "https://docs.mcp.digitalocean.com/mcp",
+      "transport": "http",
+      "authMode": "none"
+    },
+    {
+      "id": "slack",
+      "label": "Slack",
+      "description": "Read and send messages, search conversations, and manage your Slack workspace.",
+      "url": "https://mcp.slack.com/mcp",
+      "transport": "http",
+      "authMode": "oauth"
+    },
+    {
+      "id": "stripe",
+      "label": "Stripe",
+      "description": "Manage customers, payments, invoices, and subscriptions in Stripe.",
+      "url": "https://mcp.stripe.com",
+      "transport": "http",
+      "authMode": "oauth"
+    },
+    {
+      "id": "supabase",
+      "label": "Supabase",
+      "description": "Query and manage your Supabase projects, databases, and auth.",
+      "url": "https://mcp.supabase.com/mcp",
+      "transport": "http",
+      "authMode": "oauth"
+    },
+    {
+      "id": "neon",
+      "label": "Neon",
+      "description": "Manage Neon projects and branches, inspect schemas, and run PostgreSQL queries.",
+      "url": "https://mcp.neon.tech/mcp",
+      "transport": "http",
+      "authMode": "oauth"
+    },
+    {
+      "id": "clickhouse-cloud",
+      "label": "ClickHouse Cloud",
+      "description": "Explore schemas, run read-only queries, and inspect ClickHouse Cloud services.",
+      "url": "https://mcp.clickhouse.cloud/mcp",
+      "transport": "http",
+      "authMode": "oauth"
+    },
+    {
+      "id": "resend",
+      "label": "Resend",
+      "description": "Send and manage transactional emails with the Resend API.",
+      "url": "https://mcp.resend.com/mcp",
+      "transport": "http",
+      "authMode": "oauth"
+    },
+    {
+      "id": "airtable",
+      "label": "Airtable",
+      "description": "Read and update records, bases, and tables in Airtable.",
+      "url": "https://mcp.airtable.com/mcp",
+      "transport": "http",
+      "authMode": "oauth"
+    },
+    {
+      "id": "box",
+      "label": "Box",
+      "description": "Browse, upload, and manage files and folders in Box.",
+      "url": "https://mcp.box.com/mcp",
+      "transport": "http",
+      "authMode": "oauth"
+    },
+    {
+      "id": "webflow",
+      "label": "Webflow",
+      "description": "Create and manage sites, pages, collections, and content in Webflow.",
+      "url": "https://mcp.webflow.com/mcp",
+      "transport": "http",
+      "authMode": "oauth"
+    },
+    {
+      "id": "paypal",
+      "label": "PayPal",
+      "description": "Manage payments, invoices, and billing in PayPal.",
+      "url": "https://mcp.paypal.com/mcp",
+      "transport": "http",
+      "authMode": "oauth"
+    },
+    {
+      "id": "postman",
+      "label": "Postman",
+      "description": "Manage API workspaces, collections, specifications, mocks, and monitors.",
+      "url": "https://mcp.postman.com/mcp",
+      "transport": "http",
+      "authMode": "oauth"
+    },
+    {
+      "id": "zapier",
+      "label": "Zapier",
+      "description": "Trigger Zaps and automate workflows across thousands of apps.",
+      "url": "https://mcp.zapier.com/api/v1/connect",
+      "transport": "http",
+      "authMode": "oauth"
+    },
+    {
+      "id": "google-maps",
+      "label": "Google Maps",
+      "description": "Search places, check weather, and compute routes with Google Maps data.",
+      "url": "https://mapstools.googleapis.com/mcp",
+      "transport": "http",
+      "authMode": "headers",
+      "headerTemplate": "X-Goog-Api-Key: <your Google Maps API key>"
+    },
+    {
+      "id": "google-developer-knowledge",
+      "label": "Google Developer Knowledge",
+      "description": "Search official Google developer documentation and code samples.",
+      "url": "https://developerknowledge.googleapis.com/mcp",
+      "transport": "http",
+      "authMode": "none"
+    },
+    {
+      "id": "google-maps-docs",
+      "label": "Google Maps Docs",
+      "description": "Search official Google Maps documentation and code samples.",
+      "url": "https://mapscodeassist.googleapis.com/mcp",
+      "transport": "http",
+      "authMode": "none"
+    },
+    {
+      "id": "alibaba-cloud",
+      "label": "Alibaba Cloud",
+      "description": "Manage cloud resources, databases, and services on Alibaba Cloud.",
+      "url": "https://mcp.alibabacloud.com/mcp",
+      "transport": "http",
+      "authMode": "oauth"
+    },
+    {
+      "id": "render",
+      "label": "Render",
+      "description": "Manage Render services and datastores, trigger deploys, and query logs and metrics.",
+      "url": "https://mcp.render.com/mcp",
+      "transport": "http",
+      "authMode": "headers",
+      "headerTemplate": "Authorization: Bearer <your Render API key>"
+    },
+    {
+      "id": "pulumi",
+      "label": "Pulumi",
+      "description": "Query Pulumi stacks and resources, review policies, and generate infrastructure code.",
+      "url": "https://mcp.ai.pulumi.com/mcp",
+      "transport": "http",
+      "authMode": "oauth"
+    },
+    {
+      "id": "aiven",
+      "label": "Aiven",
+      "description": "Manage Aiven data services and inspect their configuration, metrics, and logs.",
+      "url": "https://mcp.aiven.live/mcp",
+      "transport": "http",
+      "authMode": "oauth"
+    },
+    {
+      "id": "shutterstock",
+      "label": "Shutterstock",
+      "description": "Search and license photos, vectors, and video from Shutterstock.",
+      "url": "https://mcp.shutterstock.com/mcp",
+      "transport": "http",
+      "authMode": "oauth"
+    },
+    {
+      "id": "anthropic",
+      "label": "Anthropic",
+      "description": "Ask Claude models via the Anthropic MCP endpoint.",
+      "url": "https://mcp.anthropic.com",
+      "transport": "http",
+      "authMode": "headers",
+      "headerTemplate": "Authorization: Bearer <your Anthropic API key>"
+    },
+    {
+      "id": "openai",
+      "label": "OpenAI",
+      "description": "Use OpenAI models and tools via the OpenAI MCP endpoint.",
+      "url": "https://mcp.openai.com",
+      "transport": "http",
+      "authMode": "headers",
+      "headerTemplate": "Authorization: Bearer <your OpenAI API key>"
+    },
+    {
+      "id": "mistral",
+      "label": "Mistral",
+      "description": "Use Mistral models and tools via the Mistral MCP endpoint.",
+      "url": "https://mcp.mistral.ai",
+      "transport": "http",
+      "authMode": "headers",
+      "headerTemplate": "Authorization: Bearer <your Mistral API key>"
+    },
+    {
+      "id": "exa",
+      "label": "Exa",
+      "description": "Search the web and retrieve content with Exa's neural search.",
+      "url": "https://mcp.exa.ai/mcp",
+      "transport": "http",
+      "authMode": "none"
+    },
+    {
+      "id": "firecrawl",
+      "label": "Firecrawl",
+      "description": "Search, scrape, crawl, and extract structured data from the web.",
+      "url": "https://mcp.firecrawl.dev/v2/mcp-oauth",
+      "transport": "http",
+      "authMode": "oauth"
+    },
+    {
+      "id": "apify",
+      "label": "Apify",
+      "description": "Discover and run Apify Actors, access results and storage, and search Apify docs.",
+      "url": "https://mcp.apify.com",
+      "transport": "http",
+      "authMode": "oauth"
+    },
+    {
+      "id": "context7",
+      "label": "Context7",
+      "description": "Look up up-to-date documentation and code examples for any library.",
+      "url": "https://mcp.context7.com/mcp",
+      "transport": "http",
+      "authMode": "none"
+    },
+    {
+      "id": "excalidraw",
+      "label": "Excalidraw",
+      "description": "Create and stream hand-drawn diagrams directly in the chat.",
+      "url": "https://mcp.excalidraw.com",
+      "transport": "http",
+      "authMode": "none"
+    },
+    {
+      "id": "excalidraw-plus",
+      "label": "Excalidraw+",
+      "description": "Read, edit, and automate Excalidraw+ workspace files and diagrams.",
+      "url": "https://api.excalidraw.com/api/v1/mcp",
+      "transport": "http",
+      "authMode": "headers",
+      "headerTemplate": "Authorization: Bearer <your Excalidraw+ API key>"
+    },
+    {
+      "id": "tldraw",
+      "label": "tldraw",
+      "description": "Draw, diagram, and collaborate on an interactive tldraw canvas.",
+      "url": "https://tldraw-mcp-app.tldraw.workers.dev/mcp",
+      "transport": "http",
+      "authMode": "none"
+    },
+    {
+      "id": "conversion-tools",
+      "label": "Conversion Tools",
+      "description": "Convert documents, PDFs, images, audio, video, and data across 140+ formats.",
+      "url": "https://mcp.conversiontools.io/mcp",
+      "transport": "http",
+      "authMode": "oauth"
+    }
+  ]
+}

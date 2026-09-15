@@ -1,0 +1,312 @@
+import { useAppState } from "@/hooks/use-app-state";
+import { useChat } from "@/hooks/use-chat";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useTheme } from "@/hooks/use-theme";
+import { DismissibleBanner } from "@/components/ui/dismissible-banner";
+import { migrateAppDatabase } from "@/core/db/database";
+import { AppStateProvider } from "@/providers/app-state";
+import { FeatureStoreProvider } from "@/providers/feature-store";
+import { UpdateProvider, useUpdate } from "@/providers/check-for-updates";
+import { AppQueryProvider } from "@/providers/query-provider";
+import {
+  TOOL_APPROVAL_APPROVE_ACTION_ID,
+  TOOL_APPROVAL_REJECT_ACTION_ID,
+} from "@/modules/notifications/run-notifications";
+import {
+  Geist_400Regular,
+  Geist_500Medium,
+  Geist_600SemiBold,
+  Geist_700Bold,
+} from "@expo-google-fonts/geist";
+import * as Notifications from "expo-notifications";
+import { useFonts } from "expo-font";
+import {
+  DarkTheme,
+  DefaultTheme,
+  router,
+  Slot,
+  ThemeProvider,
+} from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import { SQLiteProvider } from "expo-sqlite";
+import { X } from "lucide-react-native";
+import { useEffect, useRef } from "react";
+import { Pressable, Text, View } from "react-native";
+import { KeyboardProvider } from "react-native-keyboard-controller";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import "./global.css";
+
+SplashScreen.preventAutoHideAsync();
+
+Notifications.setNotificationHandler({
+  handleNotification: async (notification) => {
+    const data = notification.request.content.data as
+      | { type?: string }
+      | null;
+    const alertKind = data?.type;
+
+    return {
+      shouldPlaySound:
+        alertKind === "tool-approval" || alertKind === "run-finished",
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    };
+  },
+});
+
+function NotificationObserver() {
+  const { resolveNotificationApproval, selectConversation } = useChat();
+  const callbacksRef = useRef({
+    resolveNotificationApproval,
+    selectConversation,
+  });
+  callbacksRef.current = { resolveNotificationApproval, selectConversation };
+
+  useEffect(() => {
+    function openConversation(
+      notification: Notifications.Notification | null | undefined,
+    ) {
+      const conversationId = notification?.request.content.data?.conversationId;
+
+      if (typeof conversationId === "string") {
+        callbacksRef.current
+          .selectConversation(conversationId)
+          .then(() => {
+            router.push("/");
+          })
+          .catch(console.error);
+      }
+    }
+
+    function handleResponse(
+      response: Notifications.NotificationResponse | null | undefined,
+    ) {
+      if (!response?.notification) {
+        return;
+      }
+
+      const data = response.notification.request.content.data as
+        | { approvalId?: string; runId?: string; type?: string }
+        | null;
+
+      if (
+        data?.type === "tool-approval" &&
+        response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER
+      ) {
+        if (
+          typeof data.runId === "string" &&
+          typeof data.approvalId === "string"
+        ) {
+          if (
+            response.actionIdentifier === TOOL_APPROVAL_APPROVE_ACTION_ID
+          ) {
+            void callbacksRef.current.resolveNotificationApproval({
+              approvalId: data.approvalId,
+              decision: "approve",
+              runId: data.runId,
+            });
+          } else if (
+            response.actionIdentifier === TOOL_APPROVAL_REJECT_ACTION_ID
+          ) {
+            void callbacksRef.current.resolveNotificationApproval({
+              approvalId: data.approvalId,
+              decision: "deny",
+              runId: data.runId,
+            });
+          }
+        }
+
+        return;
+      }
+
+      openConversation(response.notification);
+    }
+
+    Notifications.getLastNotificationResponseAsync()
+      .then((response) => {
+        handleResponse(response);
+        Notifications.clearLastNotificationResponseAsync().catch(() => {});
+      })
+      .catch(() => {});
+
+    const subscription = Notifications.addNotificationResponseReceivedListener(
+      handleResponse,
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  return null;
+}
+
+function InAppNotificationBanner() {
+  const theme = useTheme();
+  const { dismissInAppNotification, inAppNotification } = useAppState();
+  const { currentConversation, selectConversation } = useChat();
+
+  useEffect(() => {
+    if (!inAppNotification) {
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      dismissInAppNotification();
+    }, 3500);
+
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [dismissInAppNotification, inAppNotification]);
+
+  if (!inAppNotification) {
+    return null;
+  }
+
+  return (
+    <View className="absolute inset-x-0 top-0 z-50 px-sp-4 pt-12">
+      <DismissibleBanner onDismiss={dismissInAppNotification}>
+        <Pressable
+          accessibilityRole="button"
+          className="rounded-card border border-border bg-card px-sp-4 py-sp-3 shadow-sm dark:border-border-dark dark:bg-card-dark"
+          onPress={() => {
+            if (currentConversation?.id !== inAppNotification.conversationId) {
+              selectConversation(inAppNotification.conversationId)
+                .then(() => {
+                  router.push("/");
+                })
+                .catch(console.error);
+            }
+
+            dismissInAppNotification();
+          }}
+          style={({ pressed }) => (pressed ? { opacity: 0.92 } : null)}
+        >
+          <View className="flex-row items-start gap-sp-3">
+            <View className="min-w-0 flex-1 gap-1">
+              <Text className="font-sans text-sm font-semibold text-foreground dark:text-foreground-dark">
+                {inAppNotification.title}
+              </Text>
+              <Text
+                className="font-sans text-sm text-muted-foreground dark:text-muted-foreground-dark"
+                numberOfLines={2}
+              >
+                {inAppNotification.body}
+              </Text>
+            </View>
+            <Pressable
+              accessibilityLabel="Dismiss notification"
+              accessibilityRole="button"
+              className="p-1"
+              hitSlop={8}
+              onPress={dismissInAppNotification}
+              style={({ pressed }) => (pressed ? { opacity: 0.72 } : null)}
+            >
+              <X color={theme.textSecondary} size={16} />
+            </Pressable>
+          </View>
+        </Pressable>
+      </DismissibleBanner>
+    </View>
+  );
+}
+
+function ReleaseUpdateBanner() {
+  const theme = useTheme();
+  const { release, bannerDismissed, installing, installUpdate, dismissUpdate } =
+    useUpdate();
+
+  if (!release || bannerDismissed) return null;
+  return (
+    <View className="absolute inset-x-0 top-10 z-50 px-sp-4 pb-10">
+      <DismissibleBanner onDismiss={dismissUpdate}>
+        <View className="rounded-card border border-border bg-card px-sp-4 py-sp-3 shadow-sm dark:border-border-dark dark:bg-card-dark">
+          <View className="flex-row items-start gap-sp-3">
+            <Pressable
+              accessibilityRole="button"
+              className="min-w-0 flex-1 gap-1"
+              disabled={installing}
+              onPress={installUpdate}
+            >
+              <Text className="font-sans text-sm font-semibold text-foreground dark:text-foreground-dark">
+                Update available: {release.tagName}
+              </Text>
+              <Text className="font-sans text-sm text-muted-foreground dark:text-muted-foreground-dark">
+                {installing
+                  ? `Downloading ${release.apkName}…`
+                  : `You have ${release.currentVersion}. Tap to update.`}
+              </Text>
+            </Pressable>
+            <Pressable
+              accessibilityLabel="Dismiss update"
+              accessibilityRole="button"
+              className="p-1"
+              hitSlop={8}
+              onPress={dismissUpdate}
+            >
+              <X color={theme.textSecondary} size={16} />
+            </Pressable>
+          </View>
+        </View>
+      </DismissibleBanner>
+    </View>
+  );
+}
+
+function SplashScreenController({
+  ready,
+}: {
+  ready: boolean;
+}) {
+  useEffect(() => {
+    if (ready) {
+      SplashScreen.hide();
+    }
+  }, [ready]);
+
+  return null;
+}
+
+export default function MainLayout() {
+  const colorScheme = useColorScheme();
+  const [fontsLoaded, fontError] = useFonts({
+    Geist_400Regular,
+    Geist_500Medium,
+    Geist_600SemiBold,
+    Geist_700Bold,
+  });
+  const fontsReady = fontsLoaded || !!fontError;
+
+  if (!fontsReady) {
+    return null;
+  }
+
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <KeyboardProvider>
+        <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+          <AppQueryProvider>
+            <SQLiteProvider
+              databaseName="mobile-agent.db"
+              onInit={migrateAppDatabase}
+            >
+              <AppStateProvider>
+                <FeatureStoreProvider>
+                  <UpdateProvider>
+                  <SplashScreenController ready={fontsReady} />
+                  <NotificationObserver />
+                  <InAppNotificationBanner />
+                  <ReleaseUpdateBanner />
+                  <Slot />
+                </UpdateProvider>
+                </FeatureStoreProvider>
+              </AppStateProvider>
+            </SQLiteProvider>
+          </AppQueryProvider>
+        </ThemeProvider>
+      </KeyboardProvider>
+    </GestureHandlerRootView>
+  );
+}

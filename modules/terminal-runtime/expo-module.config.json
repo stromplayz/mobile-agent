@@ -1,0 +1,1 @@
+{"platforms":["android"],"ios":{"modules":[]},"android":{"modules":["expo.modules.terminalruntime.TerminalRuntimeModule"]}}

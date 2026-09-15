@@ -1,0 +1,26 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      "@/assets/*": ["./assets/*"],
+      "background-agent-service": [
+        "./modules/background-agent-service/index.ts"
+      ],
+      "scheduler-alarm": ["./modules/scheduler-alarm/index.ts"],
+      "process-text": ["./modules/process-text/index.ts"],
+      "device-automation": ["./modules/device-automation/index.ts"],
+      "saf-file-operations": ["./modules/saf-file-operations/index.ts"],
+      "termux-stream": ["./modules/termux-stream/index.ts"],
+      "terminal-runtime": ["./modules/terminal-runtime/index.ts"]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts",
+    "nativewind-env.d.ts"
+  ]
+}

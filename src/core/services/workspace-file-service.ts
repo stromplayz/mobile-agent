@@ -1,0 +1,484 @@
+import * as Crypto from "expo-crypto";
+import type { DocumentPickerAsset } from "expo-document-picker";
+import { Directory, File, Paths } from "expo-file-system";
+
+import { fetchWithTimeout } from "@/core/fetch-with-timeout";
+
+import type { WorkspaceRepository } from "@/core/db/database";
+import type { WorkspaceFile } from "@/core/types/app-state";
+
+const WORKSPACE_ROOT_SEGMENTS = ["mobile-agent", "workspace"] as const;
+
+const TEXT_MIME_PREFIXES = ["text/"];
+const TEXT_MIME_TYPES = new Set([
+  "application/graphql",
+  "application/javascript",
+  "application/json",
+  "application/ld+json",
+  "application/sql",
+  "application/toml",
+  "application/typescript",
+  "application/x-javascript",
+  "application/x-sh",
+  "application/x-sql",
+  "application/x-toml",
+  "application/x-typescript",
+  "application/x-yaml",
+  "application/xml",
+  "image/svg+xml",
+]);
+const TEXT_EXTENSIONS = new Set([
+  ".astro",
+  ".bash",
+  ".c",
+  ".cc",
+  ".cfg",
+  ".cjs",
+  ".conf",
+  ".config",
+  ".cpp",
+  ".cs",
+  ".css",
+  ".csv",
+  ".cts",
+  ".cxx",
+  ".dart",
+  ".diff",
+  ".dockerfile",
+  ".editorconfig",
+  ".env",
+  ".fish",
+  ".gitignore",
+  ".go",
+  ".gql",
+  ".graphql",
+  ".h",
+  ".hpp",
+  ".htm",
+  ".html",
+  ".ini",
+  ".java",
+  ".js",
+  ".json",
+  ".jsx",
+  ".kt",
+  ".kts",
+  ".less",
+  ".log",
+  ".lua",
+  ".markdown",
+  ".md",
+  ".mjs",
+  ".mts",
+  ".npmignore",
+  ".patch",
+  ".php",
+  ".prisma",
+  ".proto",
+  ".py",
+  ".pyw",
+  ".rb",
+  ".rs",
+  ".sass",
+  ".scala",
+  ".scss",
+  ".sh",
+  ".sql",
+  ".svg",
+  ".svelte",
+  ".swift",
+  ".toml",
+  ".ts",
+  ".tsv",
+  ".tsx",
+  ".txt",
+  ".vue",
+  ".xml",
+  ".yaml",
+  ".yml",
+  ".zsh",
+]);
+
+const EXACT_TEXT_FILENAMES = new Set([
+  ".babelrc",
+  ".editorconfig",
+  ".env",
+  ".env.development",
+  ".env.local",
+  ".env.production",
+  ".eslintrc",
+  ".gitignore",
+  ".npmignore",
+  ".prettierrc",
+  "dockerfile",
+  "gemfile",
+  "license",
+  "makefile",
+  "procfile",
+  "readme",
+]);
+
+export function sanitizeFileName(name: string) {
+  const trimmed = name.trim();
+
+  if (!trimmed) {
+    return "untitled.txt";
+  }
+
+  const normalized = trimmed
+    .replace(/[\\/:*?"<>|]+/g, "-")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  return normalized || "untitled.txt";
+}
+
+function sanitizePathSegment(name: string) {
+  return sanitizeFileName(name).replace(/\.+/g, ".");
+}
+
+function buildRelativePath(id: string, fileName: string) {
+  return `${id}-${sanitizeFileName(fileName)}`;
+}
+
+function buildManagedRelativePath(input: {
+  folderSegments?: string[];
+  id: string;
+  name: string;
+}) {
+  const prefix = (input.folderSegments ?? [])
+    .map((segment) => sanitizePathSegment(segment))
+    .filter(Boolean);
+
+  return [...prefix, buildRelativePath(input.id, input.name)].join("/");
+}
+
+export function getWorkspaceDirectory() {
+  return new Directory(Paths.document, ...WORKSPACE_ROOT_SEGMENTS);
+}
+
+export function resolveWorkspaceFile(relativePath: string) {
+  const segments = relativePath.split("/").filter(Boolean);
+
+  return new File(getWorkspaceDirectory(), ...segments);
+}
+
+export function isTextWorkspaceFile(file: Pick<WorkspaceFile, "displayName" | "mimeType">) {
+  const mimeType = file.mimeType?.toLowerCase() ?? "";
+
+  if (
+    TEXT_MIME_PREFIXES.some((prefix) => mimeType.startsWith(prefix)) ||
+    TEXT_MIME_TYPES.has(mimeType)
+  ) {
+    return true;
+  }
+
+  const lowerName = file.displayName.toLowerCase();
+
+  if (EXACT_TEXT_FILENAMES.has(lowerName)) {
+    return true;
+  }
+
+  for (const extension of TEXT_EXTENSIONS) {
+    if (lowerName.endsWith(extension)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export function inferFileNameFromUrl(url: string) {
+  const withoutQuery = url.split(/[?#]/)[0] ?? url;
+  const lastSegment = withoutQuery.split("/").filter(Boolean).pop() ?? "";
+
+  if (!lastSegment) {
+    return "";
+  }
+
+  try {
+    return decodeURIComponent(lastSegment);
+  } catch {
+    return lastSegment;
+  }
+}
+
+async function resolveExpectedContentLength(
+  url: string,
+  headers?: Record<string, string>,
+) {
+  try {
+    const response = await fetchWithTimeout(
+      url,
+      { headers: { ...headers, Range: "bytes=0-0" }, method: "GET" },
+      8_000,
+    );
+    const length = response.headers.get("content-range")?.match(/\/\d+$/);
+
+    if (length) {
+      return Number.parseInt(length[0]!.slice(1), 10);
+    }
+
+    const contentLength = response.headers.get("content-length");
+
+    if (contentLength) {
+      return Number.parseInt(contentLength, 10);
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export type WorkspaceFileService = ReturnType<typeof createWorkspaceFileService>;
+
+export function createWorkspaceFileService(repository: WorkspaceRepository) {
+  async function ensureWorkspaceDirectory() {
+    const directory = getWorkspaceDirectory();
+
+    if (!directory.exists) {
+      directory.create({
+        idempotent: true,
+        intermediates: true,
+      });
+    }
+
+    return directory;
+  }
+
+  return {
+    ensureWorkspaceDirectory,
+    async clearAll() {
+      const directory = getWorkspaceDirectory();
+
+      if (directory.exists) {
+        directory.delete();
+      }
+
+      await repository.deleteAll();
+    },
+    async deleteFile(workspaceFile: WorkspaceFile) {
+      const file = resolveWorkspaceFile(workspaceFile.relativePath);
+
+      if (file.exists) {
+        file.delete();
+      }
+
+      await repository.delete(workspaceFile.id);
+    },
+    async importDocument(asset: DocumentPickerAsset) {
+      const id = Crypto.randomUUID();
+      const displayName = sanitizeFileName(asset.name || "imported-file");
+      const relativePath = buildRelativePath(id, displayName);
+
+      await ensureWorkspaceDirectory();
+
+      const sourceFile = new File(asset.uri);
+      const destinationFile = resolveWorkspaceFile(relativePath);
+
+      await sourceFile.copy(destinationFile, { overwrite: true });
+
+      return repository.create({
+        id,
+        displayName,
+        mimeType: asset.mimeType ?? null,
+        originalName: asset.name ?? null,
+        relativePath,
+        size: asset.size ?? destinationFile.size ?? null,
+        sourceKind: "imported",
+      });
+    },
+    async createTextFile(input: {
+      content: string;
+      mimeType?: string | null;
+      name: string;
+    }) {
+      const id = Crypto.randomUUID();
+      const displayName = sanitizeFileName(input.name);
+      const relativePath = buildRelativePath(id, displayName);
+
+      await ensureWorkspaceDirectory();
+
+      const file = resolveWorkspaceFile(relativePath);
+      file.create({
+        intermediates: true,
+        overwrite: true,
+      });
+      file.write(input.content);
+
+      return repository.create({
+        id,
+        displayName,
+        mimeType: input.mimeType ?? "text/plain",
+        originalName: displayName,
+        relativePath,
+        size: file.size ?? input.content.length,
+        sourceKind: "created",
+      });
+    },
+    async createManagedTextFile(input: {
+      content: string;
+      folderSegments?: string[];
+      mimeType?: string | null;
+      name: string;
+    }) {
+      const id = Crypto.randomUUID();
+      const displayName = sanitizeFileName(input.name);
+      const relativePath = buildManagedRelativePath({
+        folderSegments: input.folderSegments,
+        id,
+        name: displayName,
+      });
+
+      await ensureWorkspaceDirectory();
+
+      const file = resolveWorkspaceFile(relativePath);
+      file.create({
+        intermediates: true,
+        overwrite: true,
+      });
+      file.write(input.content);
+
+      return repository.create({
+        id,
+        displayName,
+        mimeType: input.mimeType ?? "text/plain",
+        originalName: displayName,
+        relativePath,
+        size: file.size ?? input.content.length,
+        sourceKind: "artifact",
+      });
+    },
+    async importBytesFile(input: {
+      bytes: Uint8Array;
+      mimeType?: string | null;
+      name: string;
+    }) {
+      const id = Crypto.randomUUID();
+      const displayName = sanitizeFileName(input.name);
+      const relativePath = buildRelativePath(id, displayName);
+
+      await ensureWorkspaceDirectory();
+
+      const file = resolveWorkspaceFile(relativePath);
+      file.create({
+        intermediates: true,
+        overwrite: true,
+      });
+      file.write(input.bytes);
+
+      return repository.create({
+        id,
+        displayName,
+        mimeType: input.mimeType ?? "application/octet-stream",
+        originalName: displayName,
+        relativePath,
+        size: file.size ?? input.bytes.byteLength,
+        sourceKind: "imported",
+      });
+    },
+    async readTextFile(workspaceFile: WorkspaceFile) {
+      if (!isTextWorkspaceFile(workspaceFile)) {
+        throw new Error(`${workspaceFile.displayName} is not a readable text file.`);
+      }
+
+      const file = resolveWorkspaceFile(workspaceFile.relativePath);
+
+      if (!file.exists) {
+        throw new Error(`${workspaceFile.displayName} is no longer available locally.`);
+      }
+
+      return file.text();
+    },
+    async writeTextFile(
+      workspaceFile: WorkspaceFile,
+      content: string,
+      mode: "append" | "overwrite" = "overwrite",
+    ) {
+      if (!isTextWorkspaceFile(workspaceFile)) {
+        throw new Error(`${workspaceFile.displayName} is not a writable text file.`);
+      }
+
+      const file = resolveWorkspaceFile(workspaceFile.relativePath);
+
+      if (!file.exists) {
+        file.create({
+          intermediates: true,
+          overwrite: true,
+        });
+      }
+
+      file.write(content, { append: mode === "append" });
+
+      await repository.updateMetadata(workspaceFile.id, {
+        size: file.size ?? null,
+      });
+
+      const nextFile = await repository.getById(workspaceFile.id);
+
+      if (!nextFile) {
+        throw new Error("Workspace file metadata is unavailable.");
+      }
+
+      return nextFile;
+    },
+    async downloadFile(input: {
+      folderSegments?: string[];
+      headers?: Record<string, string>;
+      name?: string;
+      onProgress?: (progress: {
+        bytesWritten: number;
+        totalBytes: number;
+      }) => void;
+      url: string;
+    }) {
+      const displayName = sanitizeFileName(
+        input.name?.trim() ||
+          inferFileNameFromUrl(input.url) ||
+          "downloaded-file",
+      );
+      const id = Crypto.randomUUID();
+      const relativePath = buildManagedRelativePath({
+        folderSegments: input.folderSegments,
+        id,
+        name: displayName,
+      });
+
+      await ensureWorkspaceDirectory();
+
+      const expectedBytes = await resolveExpectedContentLength(
+        input.url,
+        input.headers,
+      );
+
+      if (
+        expectedBytes !== null &&
+        expectedBytes > Paths.availableDiskSpace
+      ) {
+        throw new Error(
+          `Not enough free space to download ${displayName}: ${expectedBytes} bytes required but only ${Paths.availableDiskSpace} bytes available.`,
+        );
+      }
+
+      const destinationFile = resolveWorkspaceFile(relativePath);
+
+      await File.downloadFileAsync(input.url, destinationFile, {
+        headers: input.headers,
+        idempotent: true,
+        onProgress: input.onProgress,
+      });
+
+      return repository.create({
+        id,
+        displayName,
+        mimeType: destinationFile.type || null,
+        originalName: displayName,
+        relativePath,
+        size: destinationFile.size ?? null,
+        sourceKind: "created",
+      });
+    },
+  };
+}
