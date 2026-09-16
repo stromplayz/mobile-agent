@@ -15,9 +15,9 @@ concurrency:
 
 jobs:
   build:
-    name: Build Debug + Release APK
+    name: Build Debug APK
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -37,7 +37,6 @@ jobs:
           echo "ANDROID_SDK_ROOT=/usr/local/lib/android/sdk" >> $GITHUB_ENV
           yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
           /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;27.1.12297006"
-          /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --list_installed 2>/dev/null | head -20
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -62,8 +61,7 @@ jobs:
           cat android/gradle/wrapper/gradle-wrapper.properties | grep distributionUrl
 
       - name: Configure SDK path
-        run: |
-          echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+        run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
       - name: Make gradlew executable
         run: chmod +x android/gradlew
@@ -72,30 +70,23 @@ jobs:
         working-directory: android
         run: ./gradlew :app:assembleDebug --no-daemon --max-workers=2
 
-      - name: Build release APK
-        working-directory: android
-        run: ./gradlew :app:assembleRelease --no-daemon --max-workers=2
-        continue-on-error: true
+      - name: List built APK
+        run: find android/app/build/outputs/apk -name "*.apk" -exec ls -lh {} \;
 
-      - name: List built APKs
+      - name: Rename APK to a friendly name
         run: |
-          find android/app/build/outputs/apk -name "*.apk" -exec ls -lh {} \;
+          mkdir -p artifact
+          cp android/app/build/outputs/apk/debug/app-debug.apk \
+            "artifact/mobile-agent-debug.apk"
+          ls -lh artifact/
 
       - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: mobile-agent-debug-apk
-          path: android/app/build/outputs/apk/debug/*.apk
-          retention-days: 30
+          path: artifact/*.apk
+          retention-days: 90
           if-no-files-found: error
-
-      - name: Upload release APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: mobile-agent-release-apk
-          path: android/app/build/outputs/apk/release/*.apk
-          retention-days: 30
-          if-no-files-found: warn
 
       - name: Create GitHub Release with APK
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
@@ -103,9 +94,24 @@ jobs:
         with:
           tag_name: v${{ github.run_number }}
           name: Build #${{ github.run_number }}
-          files: |
-            android/app/build/outputs/apk/debug/*.apk
-            android/app/build/outputs/apk/release/*.apk
+          files: artifact/*.apk
+          body: |
+            ## Mobile Agent — Debug APK
+
+            Built from commit ${{ github.sha }}
+
+            ### Installation
+            1. Download the `.apk` file below
+            2. Enable "Install unknown apps" in Android settings
+            3. Tap the APK to install
+            4. Package: `com.tecnicalbot.mobileagent`
+
+            ### Features
+            - Bundled terminal (Termux-like, no external Termux needed)
+            - Multi-agent parallel runs (orchestrator + workers)
+            - Nested projects with persistent folder binding
+            - Brutalist square UI with tablet support
+            - All model providers: OpenAI, Anthropic, Gemini, Ollama, OpenAI-compatible
           draft: false
           prerelease: false
         env:
